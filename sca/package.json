@@ -1,0 +1,15 @@
+{
+  "name": "lab-sca-vulneravel",
+  "version": "1.0.0",
+  "description": "Projeto de laboratório com dependências vulneráveis.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "4.15.2",       
+    "lodash": "4.17.4",        
+    "handlebars": "4.0.5",     
+    "body-parser": "1.17.1"
+  }
+}
