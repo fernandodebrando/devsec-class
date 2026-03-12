@@ -40,6 +40,12 @@ brew install semgrep
 # OU via Docker
 docker pull returntocorp/semgrep:latest
 alias semgrep='docker run --rm -v $(pwd):/src returntocorp/semgrep semgrep'
+
+# No lab pode ser necessário executar os comandos abaixo
+sudo su
+export PATH="$PATH:$HOME/.local/bin"
+source ~/.zshrc
+semgrep --version
 ```
 
 ---

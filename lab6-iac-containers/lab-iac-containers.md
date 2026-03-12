@@ -35,6 +35,16 @@ curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/inst
 checkov --version
 # ou
 tfsec --version
+
+# No lab pode ser necessário executar os comandos abaixo
+cd /opt/venv/checkov
+source ./bin/activate
+checkov --version
+# ou
+sudo su
+cd /root/go/bin/
+./tfsec
+
 ```
 
 ---
