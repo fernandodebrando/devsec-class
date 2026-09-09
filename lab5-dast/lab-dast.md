@@ -327,7 +327,7 @@ docker run --rm -v $(pwd):/zap/wrk/:rw -t ghcr.io/zaproxy/zaproxy:stable \
 
 ```bash
 # Scan básico
-nikto -h http://localhost:3000
+nikto -h http://localhost:3000/xxx
 
 # Scan com output em arquivo
 nikto -h http://localhost:3000 -o nikto-results.txt

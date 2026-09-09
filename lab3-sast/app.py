@@ -8,7 +8,7 @@ app = Flask(__name__)
 # VULNERABILIDADE 1: Credencial Hardcoded
 # Um segredo de sessão crucial está diretamente no código-fonte.
 # O SAST deve identificar esta string de alta entropia.
-app.secret_key = 'super_secret_key_de_producao_12345' 
+app.secret_key = 'super_secret_key_de_producao_12345'
 
 DATABASE = 'app_data.db'
 
