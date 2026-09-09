@@ -1,0 +1,35 @@
+# Dockerfile.vulnerable - INTENCIONALMENTE INSEGURO
+
+# PROBLEMA #1: Usando imagem com tag 'latest' (não determinístico)
+FROM ubuntu:20.04
+
+# PROBLEMA #2: Rodando como root (sem USER statement)
+
+# PROBLEMA #3: Instalando pacotes desatualizados
+RUN apt-get update && apt-get install -y \
+    python2.7 \
+    curl \
+    wget \
+    git
+
+# PROBLEMA #4: Deixando cache do apt (aumenta tamanho da imagem)
+# apt-get clean não foi executado
+
+# PROBLEMA #5: Usando pip sem --no-cache-dir
+RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py \
+ && python2.7 get-pip.py \
+ && pip2 install flask==0.12.2
+
+# PROBLEMA #6: Copiando tudo (pode incluir secrets)
+COPY . /app
+
+# PROBLEMA #7: Credenciais hardcoded
+ENV DATABASE_URL="postgresql://admin:password123@db.example.com:5432/production"
+ENV API_KEY="sk-1234567890abcdefghijklmnop"
+
+# PROBLEMA #8: Expondo porta privilegiada
+EXPOSE 80
+
+# PROBLEMA #9: Executando como root
+WORKDIR /app
+CMD ["python", "app.py"]

@@ -1,0 +1,13 @@
+{
+  "semgrep.scan": {
+    "configuration": ["auto"],
+    "exclude": ["node_modules", "venv", "*.min.js"],
+    "jobs": 4
+  },
+  "semgrep.scanOnSave": true,
+  "semgrep.severity": {
+    "error": "error",
+    "warning": "warning"
+},
+"semgrep.scan.onlyGitDirty": false
+}
